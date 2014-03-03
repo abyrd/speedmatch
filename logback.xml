@@ -1,0 +1,16 @@
+<configuration>
+
+  <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder>
+      <pattern>%d{HH:mm:ss.SSS} %level \(%F:%L\) %msg%n</pattern>
+    </encoder>
+  </appender>
+
+  <root level="info">
+    <appender-ref ref="STDOUT" />
+  </root>
+  
+  <logger name="com.goabout.speedmatch" level="debug" />
+  <logger name="com.sun.jersey" level="debug" />
+  
+</configuration>
