@@ -37,64 +37,63 @@ import com.vividsolutions.jts.operation.distance.GeometryLocation;
 
 public class RoadIndex {
 
-	private final String SPEED_ATTR = "OMSCHR";
-	private static String INPUT = "/home/abyrd/maxspeed/max_snelheden.shp";
-	private static final Logger LOG = LoggerFactory.getLogger(RoadIndex.class);	
+    private final String SPEED_ATTR = "OMSCHR";
+    private static String INPUT = "/home/abyrd/maxspeed/max_snelheden.shp";
+    private static final Logger LOG = LoggerFactory.getLogger(RoadIndex.class);
 
-	// Example input file uses Rijksdriehoekstelsel_New
-	// which is already in meters
-	CoordinateReferenceSystem sourceCRS; 
-	CoordinateReferenceSystem WGS84 = DefaultGeographicCRS.WGS84;
-	MathTransform fromWGS84;
-	GeometryBuilder builder;
-	
-	// STRtree is a Packed R-Tree that cannot be modified once built
-	STRtree tree;
+    // Example input file uses Rijksdriehoekstelsel_New
+    // which is already in meters
+    CoordinateReferenceSystem sourceCRS;
+    CoordinateReferenceSystem WGS84 = DefaultGeographicCRS.WGS84;
+    MathTransform fromWGS84;
+    GeometryBuilder builder;
 
-	
-	public void loadFile () {
+    // STRtree is a Packed R-Tree that cannot be modified once built
+    STRtree tree;
 
-		tree = new STRtree();
-				
-    	LOG.debug("Loading road segments from shapefile {}", INPUT);
+    public void loadFile() {
+
+        tree = new STRtree();
+
+        LOG.debug("Loading road segments from shapefile {}", INPUT);
         try {
             File file = new File(INPUT);
-            if ( ! file.exists()) {
+            if (!file.exists()) {
                 throw new RuntimeException("Input file does not exist.");
             }
             FileDataStore store = FileDataStoreFinder.getDataStore(file);
             SimpleFeatureSource featureSource = store.getFeatureSource();
 
             sourceCRS = featureSource.getInfo().getCRS();
-            //CoordinateReferenceSystem WGS84 = CRS.decode("EPSG:4326", true);
-			fromWGS84 = CRS.findMathTransform(WGS84, sourceCRS, true); // lenient
-			builder = new GeometryBuilder(); // this one from JTS needs no CRS
-			
+            // CoordinateReferenceSystem WGS84 = CRS.decode("EPSG:4326", true);
+            fromWGS84 = CRS.findMathTransform(WGS84, sourceCRS, true); // lenient
+            builder = new GeometryBuilder(); // this one from JTS needs no CRS
+
             Query query = new Query();
             query.setCoordinateSystem(sourceCRS);
             // no need to reproject, source is already in meters.
-            //query.setCoordinateSystemReproject(internalCRS);
+            // query.setCoordinateSystemReproject(internalCRS);
             SimpleFeatureCollection featureCollection = featureSource.getFeatures(query);
 
             SimpleFeatureIterator it = featureCollection.features();
             int n = 0;
             try {
-	            while (it.hasNext()) {
-	                SimpleFeature feature = it.next();
-	                Geometry geom = (Geometry) feature.getDefaultGeometry();
-	                int maxSpeedKph = (int) feature.getAttribute(SPEED_ATTR);
-	                // example input file contains single-entry multilinestrings
-	                // rather than linestrings
-                	MultiLineString mls = (MultiLineString) geom;
-                	LOG.trace("geom: {}", mls);
-                	for (int i = 0; i < mls.getNumGeometries(); i++) {
-                		LineString ls = (LineString) mls.getGeometryN(i);
-                		RoadChunk rc = new RoadChunk(ls, maxSpeedKph);
-                		Envelope env = ls.getEnvelopeInternal();
-                		tree.insert(env, rc);
-                	}
-	                n += 1;
-	            }
+                while (it.hasNext()) {
+                    SimpleFeature feature = it.next();
+                    Geometry geom = (Geometry) feature.getDefaultGeometry();
+                    int maxSpeedKph = (int) feature.getAttribute(SPEED_ATTR);
+                    // example input file contains single-entry multilinestrings
+                    // rather than linestrings
+                    MultiLineString mls = (MultiLineString) geom;
+                    LOG.trace("geom: {}", mls);
+                    for (int i = 0; i < mls.getNumGeometries(); i++) {
+                        LineString ls = (LineString) mls.getGeometryN(i);
+                        RoadChunk rc = new RoadChunk(ls, maxSpeedKph);
+                        Envelope env = ls.getEnvelopeInternal();
+                        tree.insert(env, rc);
+                    }
+                    n += 1;
+                }
             } catch (ClassCastException cce) {
                 throw new RuntimeException("Shapefile must contain multilinestrings.");
             }
@@ -110,47 +109,46 @@ public class RoadIndex {
     }
 
     public RoadIndex() {
-    	loadFile();
+        loadFile();
     }
-    
+
     /**
      * Heading is in degrees. Speed is in meters/sec.
      */
-    public List<RoadMatch> getMatches (
-    		double lat, double lon, double radius,
-    		double heading, double speed) {
-    	List<RoadMatch> matches = Lists.newArrayList();
-    	Coordinate coord = new Coordinate(lon, lat);
-		try {
-			// use GeoTools JTS bridge class
-			Coordinate proj = JTS.transform(coord, null, fromWGS84);
-			Point point = builder.point(proj.x, proj.y);
-			Envelope env = new Envelope(proj);
-			env.expandBy(radius, radius);
-			LOG.debug("Envelope is: {}", env.toString());
-			@SuppressWarnings("unchecked")
-			List<RoadChunk> chunks = (List<RoadChunk>) tree.query(env);
-			for (RoadChunk chunk : chunks) {
-				double distance = point.distance(chunk.geom);
-				DistanceOp dop = new DistanceOp(chunk.geom, point);
-				GeometryLocation[] locs = dop.nearestLocations();
-				int segIdx= locs[0].getSegmentIndex();
-				Coordinate c0 = chunk.geom.getCoordinateN(segIdx);
-				Coordinate c1 = chunk.geom.getCoordinateN(segIdx + 1);
-				LineSegment seg = new LineSegment(c0, c1);
-				double segAngleRad = seg.angle();
-				segAngleRad += (Math.PI / 2.0); // Relative to North, not East
-				double segAngleDeg = Angle.toDegrees(segAngleRad);
-				double reqAngleRad = Angle.toRadians(heading);
-				double relAngleDeg = Angle.toDegrees(Angle.diff(segAngleRad, reqAngleRad));
-				matches.add(new RoadMatch(chunk, (int)distance, (int)segAngleDeg, (int)relAngleDeg));
-			}
-		} catch (TransformException e) {
-			e.printStackTrace();
-		}    	
-		Collections.sort(matches);
-    	return matches;
+    public List<RoadMatch> getMatches(double lat, double lon, double radius, double heading,
+            double speed) {
+        List<RoadMatch> matches = Lists.newArrayList();
+        Coordinate coord = new Coordinate(lon, lat);
+        try {
+            // use GeoTools JTS bridge class
+            Coordinate proj = JTS.transform(coord, null, fromWGS84);
+            Point point = builder.point(proj.x, proj.y);
+            Envelope env = new Envelope(proj);
+            env.expandBy(radius, radius);
+            LOG.debug("Envelope is: {}", env.toString());
+            @SuppressWarnings("unchecked")
+            List<RoadChunk> chunks = (List<RoadChunk>) tree.query(env);
+            for (RoadChunk chunk : chunks) {
+                double distance = point.distance(chunk.geom);
+                DistanceOp dop = new DistanceOp(chunk.geom, point);
+                GeometryLocation[] locs = dop.nearestLocations();
+                int segIdx = locs[0].getSegmentIndex();
+                Coordinate c0 = chunk.geom.getCoordinateN(segIdx);
+                Coordinate c1 = chunk.geom.getCoordinateN(segIdx + 1);
+                LineSegment seg = new LineSegment(c0, c1);
+                double segAngleRad = seg.angle();
+                segAngleRad += (Math.PI / 2.0); // Relative to North, not East
+                double segAngleDeg = Angle.toDegrees(segAngleRad);
+                double reqAngleRad = Angle.toRadians(heading);
+                double relAngleDeg = Angle.toDegrees(Angle.diff(segAngleRad, reqAngleRad));
+                matches.add(new RoadMatch(chunk, (int) distance, (int) segAngleDeg,
+                        (int) relAngleDeg));
+            }
+        } catch (TransformException e) {
+            e.printStackTrace();
+        }
+        Collections.sort(matches);
+        return matches;
     }
 
-    
 }

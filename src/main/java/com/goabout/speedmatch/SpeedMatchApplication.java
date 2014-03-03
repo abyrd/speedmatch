@@ -10,20 +10,20 @@ import org.glassfish.jersey.jackson.JacksonFeature;
 
 public class SpeedMatchApplication extends Application {
 
-	public RoadIndex ridx;
-	
-	public SpeedMatchApplication() {
-		ridx = new RoadIndex();
-	}
+    public RoadIndex ridx;
 
-	@Override
-	public Set<Class<?>> getClasses() {
-		Set<Class<?>> classes = Sets.newHashSet();
-		// Add web resource classes.
-		classes.add(SpeedMatchResource.class);
+    public SpeedMatchApplication() {
+        ridx = new RoadIndex();
+    }
+
+    @Override
+    public Set<Class<?>> getClasses() {
+        Set<Class<?>> classes = Sets.newHashSet();
+        // Add web resource classes.
+        classes.add(SpeedMatchResource.class);
         // Add Jackson POJO JSON serialization.
         classes.add(JacksonFeature.class);
-		return classes;
-	}
+        return classes;
+    }
 
 }

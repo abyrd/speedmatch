@@ -13,23 +13,21 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.MediaType;
 
 @Path("/match")
-@Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
+@Produces({ MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML })
 public class SpeedMatchResource {
 
-	// for some reason Jersey will only inject if this is
-	// Application, not a subclass of Application.
-	@Context Application app;
+    // for some reason Jersey will only inject if this is
+    // Application, not a subclass of Application.
+    @Context
+    Application app;
 
-	@GET
-	public Response getMatches (
-			@QueryParam("lat") Double lat,
-			@QueryParam("lon") Double lon,
-			@QueryParam("heading") double heading, 
-			@QueryParam("speed") double speed,
-			@QueryParam("radius") @DefaultValue("200") double radius) {
+    @GET
+    public Response getMatches(@QueryParam("lat") Double lat, @QueryParam("lon") Double lon,
+            @QueryParam("heading") double heading, @QueryParam("speed") double speed,
+            @QueryParam("radius") @DefaultValue("200") double radius) {
 
-		List<RoadMatch> matches = ((SpeedMatchApplication)app)
-				.ridx.getMatches(lat, lon, radius, heading, speed);
-		return Response.status(200).entity(matches).build();
-	}
+        List<RoadMatch> matches = ((SpeedMatchApplication) app).ridx.getMatches(lat, lon, radius,
+                heading, speed);
+        return Response.status(200).entity(matches).build();
+    }
 }
