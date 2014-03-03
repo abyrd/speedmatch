@@ -38,7 +38,7 @@ import com.vividsolutions.jts.operation.distance.GeometryLocation;
 public class RoadIndex {
 
     private final String SPEED_ATTR = "OMSCHR";
-    private static String INPUT = "/home/abyrd/maxspeed/max_snelheden.shp";
+    private static String INPUT = "/var/speedmatch/max_snelheden.shp";
     private static final Logger LOG = LoggerFactory.getLogger(RoadIndex.class);
 
     // Example input file uses Rijksdriehoekstelsel_New
