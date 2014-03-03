@@ -1,16 +1,23 @@
+// The 'buildscript' block specifies dependencies
+// for the execution of the Gradle build script itself
+buildscript {
+    // Shadow creates merged "super-jars"
+    repositories { jcenter() }
+    dependencies { classpath 'com.github.jengelman.gradle.plugins:shadow:0.8' }
+}
 
-apply plugin: 'java'
 apply plugin: 'eclipse'
+apply plugin: 'shadow'
+version = '1.0'
 
 ext {
-	version = '1.0'
 	jerseyVersion = "2.6"
  	geotoolsVersion = "10.5"
 }
 
 jar {
     manifest {
-        attributes 'Main-Class': 'org.goabout.speedmatch.Main'
+        attributes 'Main-Class': 'com.goabout.speedmatch.Main'
     }
 }
 
