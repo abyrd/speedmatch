@@ -113,7 +113,9 @@ public class RoadIndex {
     }
 
     /**
-     * Heading is in degrees. Speed is in meters/sec.
+     * @param radius distance around lat,lon in which to find road segments
+     * @param heading in degrees clockwise from North. 
+     * @param speed in meters/sec.
      */
     public List<RoadMatch> getMatches(double lat, double lon, double radius, double heading,
             double speed) {
@@ -124,7 +126,7 @@ public class RoadIndex {
             Coordinate proj = JTS.transform(coord, null, fromWGS84);
             Point point = builder.point(proj.x, proj.y);
             Envelope env = new Envelope(proj);
-            env.expandBy(radius, radius);
+            env.expandBy(radius, radius); // size increases by 2xradius in each dimension
             LOG.debug("Envelope is: {}", env.toString());
             @SuppressWarnings("unchecked")
             List<RoadChunk> chunks = (List<RoadChunk>) tree.query(env);
@@ -136,11 +138,12 @@ public class RoadIndex {
                 Coordinate c0 = chunk.geom.getCoordinateN(segIdx);
                 Coordinate c1 = chunk.geom.getCoordinateN(segIdx + 1);
                 LineSegment seg = new LineSegment(c0, c1);
-                double segAngleRad = seg.angle();
-                segAngleRad += (Math.PI / 2.0); // Relative to North, not East
+                // angle is in radians counterclockwise from East (polar convention)
+                double segAngleRad = Angle.normalize(Math.PI / 2.0 - seg.angle());
                 double segAngleDeg = Angle.toDegrees(segAngleRad);
-                double reqAngleRad = Angle.toRadians(heading);
-                double relAngleDeg = Angle.toDegrees(Angle.diff(segAngleRad, reqAngleRad));
+                double headingRad  = Angle.normalize(Angle.toRadians(heading));
+                double relAngleRad = Angle.diff(segAngleRad, headingRad);
+                double relAngleDeg = Angle.toDegrees(relAngleRad);
                 matches.add(new RoadMatch(chunk, (int) distance, (int) segAngleDeg,
                         (int) relAngleDeg));
             }
