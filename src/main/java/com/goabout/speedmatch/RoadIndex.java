@@ -37,7 +37,6 @@ import com.vividsolutions.jts.operation.distance.GeometryLocation;
 
 public class RoadIndex {
 
-    private final String SPEED_ATTR = "OMSCHR";
     private static String INPUT = "/var/speedmatch/max_snelheden.shp";
     private static final Logger LOG = LoggerFactory.getLogger(RoadIndex.class);
 
@@ -81,13 +80,16 @@ public class RoadIndex {
                 while (it.hasNext()) {
                     SimpleFeature feature = it.next();
                     Geometry geom = (Geometry) feature.getDefaultGeometry();
-                    int maxSpeedKph = (int) feature.getAttribute(SPEED_ATTR);
+                    int maxSpeedKph = (int) feature.getAttribute("OMSCHR");
+                    boolean reverse = "T".equals(feature.getAttribute("KANTCODE"));
                     // example input file contains single-entry multilinestrings
                     // rather than linestrings
                     MultiLineString mls = (MultiLineString) geom;
                     LOG.trace("geom: {}", mls);
                     for (int i = 0; i < mls.getNumGeometries(); i++) {
                         LineString ls = (LineString) mls.getGeometryN(i);
+                        if (ls.getNumPoints() < 2) continue;
+                        if (reverse) ls = (LineString) ls.reverse();
                         RoadChunk rc = new RoadChunk(ls, maxSpeedKph);
                         Envelope env = ls.getEnvelopeInternal();
                         tree.insert(env, rc);
@@ -140,10 +142,13 @@ public class RoadIndex {
                 LineSegment seg = new LineSegment(c0, c1);
                 // angle is in radians counterclockwise from East (polar convention)
                 double segAngleRad = Angle.normalize(Math.PI / 2.0 - seg.angle());
-                double segAngleDeg = Angle.toDegrees(segAngleRad);
                 double headingRad  = Angle.normalize(Angle.toRadians(heading));
                 double relAngleRad = Angle.diff(segAngleRad, headingRad);
+                // smallest angle in range [0,180]
                 double relAngleDeg = Angle.toDegrees(relAngleRad);
+                double segAngleDeg = Angle.toDegrees(segAngleRad);
+                // normalize to navigation heading range [0,360]
+                if (segAngleDeg < 0) segAngleDeg += 360.0;
                 matches.add(new RoadMatch(chunk, (int) distance, (int) segAngleDeg,
                         (int) relAngleDeg));
             }
