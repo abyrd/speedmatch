@@ -11,3 +11,5 @@
 .project
 .settings/
 
+# Data path
+/data/

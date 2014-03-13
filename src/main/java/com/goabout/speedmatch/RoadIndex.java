@@ -37,7 +37,7 @@ import com.vividsolutions.jts.operation.distance.GeometryLocation;
 
 public class RoadIndex {
 
-    private static String INPUT = "/var/speedmatch/max_snelheden.shp";
+    private static String INPUT = "data/max_snelheden.shp";
     private static final Logger LOG = LoggerFactory.getLogger(RoadIndex.class);
 
     // Example input file uses Rijksdriehoekstelsel_New
