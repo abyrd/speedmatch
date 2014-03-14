@@ -6,10 +6,14 @@ class RoadChunk {
 
     LineString geom;
     int maxSpeedKph;
+	int fromHour;
+	int toHour;
 
-    public RoadChunk(LineString geom, int maxSpeedKph) {
+    public RoadChunk(LineString geom, int maxSpeedKph, int fromHour, int toHour) {
         this.geom = geom;
         this.maxSpeedKph = maxSpeedKph;
+		this.fromHour = fromHour;
+		this.toHour = toHour;
     }
 
 }

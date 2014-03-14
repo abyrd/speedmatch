@@ -9,8 +9,8 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Application;
 import javax.ws.rs.core.Context;
-import javax.ws.rs.core.Response;
 import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
 
 @Path("/match")
 @Produces({ MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML })
@@ -24,10 +24,11 @@ public class SpeedMatchResource {
     @GET
     public Response getMatches(@QueryParam("lat") Double lat, @QueryParam("lon") Double lon,
             @QueryParam("heading") double heading, @QueryParam("speed") double speed,
-            @QueryParam("radius") @DefaultValue("200") double radius) {
+            @QueryParam("radius") @DefaultValue("200") double radius,
+            @QueryParam("hour") @DefaultValue("-1") int hour) {
 
         List<RoadMatch> matches = ((SpeedMatchApplication) app).ridx.getMatches(lat, lon, radius,
-                heading, speed);
+                heading, speed, hour);
         return Response.status(200).entity(matches).build();
     }
 }

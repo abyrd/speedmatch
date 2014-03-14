@@ -81,6 +81,8 @@ public class RoadIndex {
                     SimpleFeature feature = it.next();
                     Geometry geom = (Geometry) feature.getDefaultGeometry();
                     int maxSpeedKph = (int) feature.getAttribute("OMSCHR");
+                    int fromHour = (int) feature.getAttribute("BEGINTIJD");
+                    int toHour = (int) feature.getAttribute("EINDTIJD");
                     boolean reverse = "T".equals(feature.getAttribute("KANTCODE"));
                     // example input file contains single-entry multilinestrings
                     // rather than linestrings
@@ -90,7 +92,7 @@ public class RoadIndex {
                         LineString ls = (LineString) mls.getGeometryN(i);
                         if (ls.getNumPoints() < 2) continue;
                         if (reverse) ls = (LineString) ls.reverse();
-                        RoadChunk rc = new RoadChunk(ls, maxSpeedKph);
+                        RoadChunk rc = new RoadChunk(ls, maxSpeedKph, fromHour, toHour);
                         Envelope env = ls.getEnvelopeInternal();
                         tree.insert(env, rc);
                     }
@@ -116,11 +118,11 @@ public class RoadIndex {
 
     /**
      * @param radius distance around lat,lon in which to find road segments
-     * @param heading in degrees clockwise from North. 
+     * @param heading in degrees clockwise from North.
      * @param speed in meters/sec.
      */
     public List<RoadMatch> getMatches(double lat, double lon, double radius, double heading,
-            double speed) {
+            double speed, int hour) {
         List<RoadMatch> matches = Lists.newArrayList();
         Coordinate coord = new Coordinate(lon, lat);
         try {
@@ -132,9 +134,17 @@ public class RoadIndex {
             LOG.debug("Envelope is: {}", env.toString());
             @SuppressWarnings("unchecked")
             List<RoadChunk> chunks = (List<RoadChunk>) tree.query(env);
-            for (RoadChunk chunk : chunks) {
-                double distance = point.distance(chunk.geom);
-                DistanceOp dop = new DistanceOp(chunk.geom, point);
+			for (RoadChunk chunk : chunks) {
+				// If an hour is specified, skip segments that do not match
+				if (hour > -1) {
+					if (chunk.fromHour < chunk.toHour) {
+						if (hour < chunk.fromHour || hour >= chunk.toHour) continue;
+					} else if (chunk.fromHour > chunk.toHour) {
+						if (hour < chunk.fromHour && hour >= chunk.toHour) continue;
+					}
+				}
+				double distance = point.distance(chunk.geom);
+				DistanceOp dop = new DistanceOp(chunk.geom, point);
                 GeometryLocation[] locs = dop.nearestLocations();
                 int segIdx = locs[0].getSegmentIndex();
                 Coordinate c0 = chunk.geom.getCoordinateN(segIdx);
