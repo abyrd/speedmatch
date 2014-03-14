@@ -24,4 +24,12 @@ public class RoadMatch implements Comparable<RoadMatch> {
     public float getMaxSpeed() {
         return chunk.maxSpeedKph;
     }
+
+    public int getFromHour() {
+    	return chunk.fromHour;
+    }
+
+    public int getToHour() {
+    	return chunk.toHour;
+    }
 }
